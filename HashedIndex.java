@@ -92,65 +92,37 @@ public class HashedIndex implements Index {
     }
 
     private PostingsList intersectionQuery( Query query ) {
-	/**Implement intersection*/
-	PostingsList answerList = null;
-	PostingsList currentList = index.get( query.terms.get(0) );
-	// System.out.println(currentList);
+		PostingsList answerList = null;
+		PostingsList currentList = index.get( query.terms.get(0) );
 	
 		for (int termIdx=1; termIdx < query.terms.size(); termIdx++ ) {
 			answerList = new PostingsList();
-			// System.err.println(termIdx);
 			PostingsList nextList = index.get( query.terms.get(termIdx) );
-			// System.out.println(nextList);
 			int i=0, j=0;
-			int k=0;
 
 			while ( i < currentList.size() && j < nextList.size() ) {
-				
 				if ( currentList.get(i).docID == nextList.get(j).docID ) {
-					// System.err.println("comparing: " + currentList.get(i).docID + " and " + nextList.get(j).docID);
-					// System.err.println("were equal");
-					// System.err.println("were equal, i: "+i);
-					// currentList.remove(i);
 					answerList.add( currentList.get(i) );
 					i++;
 					j++;
 				} else {
 					if ( currentList.get(i).docID < nextList.get(j).docID ) {
-						// System.err.println("current was less");
 						currentList.remove(i);
-						// i++;
 					} else {
-						// System.err.println("next was less");
 						j++;
 					}
 				}
 			}
-			// System.err.println("currlen: "+currentList.size());
-			// System.err.println("currlen: "+answerList.size());
-
-			/* Remove the rest of the unmatched elements of current. */
-			// System.err.println("i: "+i);
-			
-			// for (;i<currentList.size();i++) {
-			// 	currentList.remove(i);
-			// }
-			// System.err.println(currentList.size());
 			currentList = answerList;
-			// System.err.println(currentList.size());
 		}
-		// answerList = currentList;
-
-		// System.err.println(answerList.size());
-		LinkedList<String> ll = new LinkedList<String>();
-		for (int h=0;h<currentList.size();h++) {
-			// System.err.println(currentList.get(h).docID);
-			ll.add(docIDs.get(""+currentList.get(h).docID));
-		}
-		Collections.sort(ll, String.CASE_INSENSITIVE_ORDER);
-		for (int h=0;h<ll.size();h++) {
-			System.out.println(ll.get(h));
-		}
+		// LinkedList<String> ll = new LinkedList<String>();
+		// for (int h=0;h<currentList.size();h++) {
+		// 	ll.add(docIDs.get(""+currentList.get(h).docID));
+		// }
+		// Collections.sort(ll, String.CASE_INSENSITIVE_ORDER);
+		// for (int h=0;h<ll.size();h++) {
+		// 	System.out.println(ll.get(h));
+		// }
 		return currentList;
     }
 
