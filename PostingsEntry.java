@@ -9,11 +9,13 @@
 package ir;
 
 import java.io.Serializable;
+import java.util.LinkedList;
 
 public class PostingsEntry implements Comparable<PostingsEntry>, Serializable {
     
     public int docID;
     public double score;
+    private LinkedList<Integer> positions = new LinkedList<Integer>();
 
     /**
      *  PostingsEntries are compared by their score (only relevant 
@@ -29,9 +31,19 @@ public class PostingsEntry implements Comparable<PostingsEntry>, Serializable {
     //
     //  YOUR CODE HERE
     //
-    public PostingsEntry(int docID) {
+    public PostingsEntry(int docID, int offset) {
 	   this.docID = docID;
+       this.positions.add(offset);
     }
+
+    public LinkedList<Integer> positions() {
+        return positions;
+    }
+
+    public void addPosition(int offset) {
+        positions.add(offset);
+    }
+
 }
 
     

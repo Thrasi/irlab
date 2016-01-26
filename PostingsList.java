@@ -37,13 +37,19 @@ public class PostingsList implements Serializable {
     //
     //  YOUR CODE HERE
     //
-    /** Works if the list is sorted and the entry e is always larger than all previous. */
+    /** Works if the list is sorted and the entry e is always greater or equal to all previous. */
+    
+    /*  If last document has lower index it is a new entry.
+        If it is equal to last index it is a new position    
+    */
     public void add( PostingsEntry e ) {
     	int size = list.size();
     	if ( size > 0 ) {
     	    if ( list.getLast().docID < e.docID ) {
     		  list.add( e );
-    	    }
+    	    } else if ( list.getLast().docID == e.docID ) {
+                list.getLast().addPosition( e.positions().get(0) );
+            }
     	} else {
     	    list.add( e );
     	}

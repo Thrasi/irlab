@@ -30,7 +30,7 @@ public class HashedIndex implements Index {
 	//
 	//  YOUR CODE HERE
 	//
-		PostingsEntry pe = new PostingsEntry(docID);
+		PostingsEntry pe = new PostingsEntry(docID, offset);
 	
 		if  ( index.containsKey( token ) ) {
 		    // add docId
@@ -65,7 +65,7 @@ public class HashedIndex implements Index {
 	// 
 	//  REPLACE THE STATEMENT BELOW WITH YOUR CODE
 	//
-	return index.get( index );
+		return index.get( index );
     }
 
 
@@ -73,22 +73,65 @@ public class HashedIndex implements Index {
      *  Searches the index for postings matching the query.
      */
     public PostingsList search( Query query, int queryType, int rankingType, int structureType ) {
-	// 
-	//  REPLACE THE STATEMENT BELOW WITH YOUR CODE
-	//
-	
-	PostingsList pl = null;
-	if ( queryType == Index.INTERSECTION_QUERY ) {
+		// 
+		//  REPLACE THE STATEMENT BELOW WITH YOUR CODE
+		//
+		
+		PostingsList pl = null;
+		if ( queryType == Index.INTERSECTION_QUERY ) {
        	    pl = intersectionQuery( query );
-	} 
-	else if ( queryType == Index.PHRASE_QUERY ) {
-	    
-	} 
-	else if ( queryType == Index.RANKED_QUERY ) {
+		} 
+		else if ( queryType == Index.PHRASE_QUERY ) {
+			pl = phraseQuery( query );    
+		} 
+		else if ( queryType == Index.RANKED_QUERY ) {
 
-	}
+		}
+		
+		return pl;
+    }
+
+    private PostingsList phraseQuery( Query query ) {
+    	PostingsList answerList = null;
+		PostingsList currentList = index.get( query.terms.get(0) );
 	
-	return pl;
+		for (int termIdx=1; termIdx < query.terms.size(); termIdx++ ) {
+			answerList = new PostingsList();
+			PostingsList nextList = index.get( query.terms.get(termIdx) );
+			int i=0, j=0;
+
+			while ( i < currentList.size() && j < nextList.size() ) {
+				if ( currentList.get(i).docID == nextList.get(j).docID ) {
+					/*CHECK POSITIONS*/
+					LinkedList<Integer> pp1 = currentList.get(i).positions();
+					LinkedList<Integer> pp2 = nextList.get(j).positions();
+					int ii=0, jj=0;
+					/* As soon as we find a match we add the document */
+					while ( ii < pp1.size() && jj < pp2.size() ) {
+						if ( pp1.get(ii) + termIdx == pp2.get(jj) ) {
+							answerList.add( currentList.get(i) );
+							break;
+						} else {
+							if ( pp1.get(ii)+termIdx < pp2.get(jj) ) {
+								ii++;
+							} else {
+								jj++;
+							}
+						}
+					}
+					i++;
+					j++;
+				} else {
+					if ( currentList.get(i).docID < nextList.get(j).docID ) {
+						currentList.remove(i);
+					} else {
+						j++;
+					}
+				}
+			}
+			currentList = answerList;
+		}
+		return currentList;
     }
 
     private PostingsList intersectionQuery( Query query ) {
