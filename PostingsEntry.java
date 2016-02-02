@@ -31,6 +31,10 @@ public class PostingsEntry implements Comparable<PostingsEntry>, Serializable {
     //
     //  YOUR CODE HERE
     //
+    public PostingsEntry(int docID) {
+       this.docID = docID;
+    }
+
     public PostingsEntry(int docID, int offset) {
 	   this.docID = docID;
        this.positions.add(offset);

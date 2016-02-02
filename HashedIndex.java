@@ -65,7 +65,7 @@ public class HashedIndex implements Index {
 	// 
 	//  REPLACE THE STATEMENT BELOW WITH YOUR CODE
 	//
-		return index.get( index );
+		return index.get( token );
     }
 
 
@@ -99,26 +99,46 @@ public class HashedIndex implements Index {
 			answerList = new PostingsList();
 			PostingsList nextList = index.get( query.terms.get(termIdx) );
 			int i=0, j=0;
+			// System.err.println("--------------------term: "+termIdx+"---------------");
 
 			while ( i < currentList.size() && j < nextList.size() ) {
+				boolean tt = true;
 				if ( currentList.get(i).docID == nextList.get(j).docID ) {
 					/*CHECK POSITIONS*/
 					LinkedList<Integer> pp1 = currentList.get(i).positions();
 					LinkedList<Integer> pp2 = nextList.get(j).positions();
+					int iMax = pp1.size();
+					int jMax = pp2.size();
 					int ii=0, jj=0;
 					/* As soon as we find a match we add the document */
-					while ( ii < pp1.size() && jj < pp2.size() ) {
-						if ( pp1.get(ii) + termIdx == pp2.get(jj) ) {
-							answerList.add( currentList.get(i) );
-							break;
+					PostingsEntry pe = new PostingsEntry(currentList.get(i).docID);
+					
+
+					while ( ii < iMax && jj < jMax ) {
+						if ( pp2.get(jj) - pp1.get(ii) == 1 ) {
+							// if (tt) {
+							// 	System.err.println("FOUND A MATCHING DOC: " + docIDs.get(""+currentList.get(i).docID));
+							// 	tt=false;
+							// }
+							pe.addPosition( pp2.get(jj) );
+							// System.err.println("FOUND A MATCHING OFFSET");
+							// System.err.println(ii +" and "+ jj);
+							// System.err.println("Offsets: "+pp1.get(ii) +" and "+ pp2.get(jj));
+							ii++;
+							jj++;
 						} else {
-							if ( pp1.get(ii)+termIdx < pp2.get(jj) ) {
+							if ( pp1.get(ii) < pp2.get(jj) ) {
 								ii++;
 							} else {
 								jj++;
 							}
 						}
 					}
+
+					if ( pe.positions().size() > 0 ) {
+						answerList.add( pe );
+					}
+
 					i++;
 					j++;
 				} else {
@@ -133,6 +153,7 @@ public class HashedIndex implements Index {
 		}
 		return currentList;
     }
+
 
     private PostingsList intersectionQuery( Query query ) {
 		PostingsList answerList = null;
@@ -158,14 +179,6 @@ public class HashedIndex implements Index {
 			}
 			currentList = answerList;
 		}
-		// LinkedList<String> ll = new LinkedList<String>();
-		// for (int h=0;h<currentList.size();h++) {
-		// 	ll.add(docIDs.get(""+currentList.get(h).docID));
-		// }
-		// Collections.sort(ll, String.CASE_INSENSITIVE_ORDER);
-		// for (int h=0;h<ll.size();h++) {
-		// 	System.out.println(ll.get(h));
-		// }
 		return currentList;
     }
 
