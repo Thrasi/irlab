@@ -11,9 +11,20 @@
 package ir;
 
 import java.util.HashMap;
+import java.util.TreeSet;
+import java.util.SortedSet;
 import java.util.Iterator;
 import java.util.Collections;
 import java.util.LinkedList;
+import java.io.File;
+import java.io.FileOutputStream;
+import java.io.ObjectOutputStream;
+import java.io.FileInputStream;
+import java.io.ObjectInputStream;
+import java.io.IOException;
+import java.io.FileNotFoundException;
+import java.lang.ClassNotFoundException;
+import java.util.Arrays;
 
 /**
  *   Implements an inverted index as a Hashtable from words to PostingsLists.
@@ -21,6 +32,16 @@ import java.util.LinkedList;
 public class HashedIndex implements Index {
     /** The index as a hashtable. */
     private HashMap<String,PostingsList> index = new HashMap<String,PostingsList>();
+    public HashMap<String, String> docIDs = new HashMap<String,String>();
+    private int size = 0;
+    private int indexFileCount = 0;
+    private File[] listOfFiles;
+    private int n = 2;
+
+    public HashedIndex() {
+    	countIndexFiles();
+		System.out.println( "Number of existing index files: " + indexFileCount );
+    }
 
 
     /**
@@ -30,19 +51,129 @@ public class HashedIndex implements Index {
 	//
 	//  YOUR CODE HERE
 	//
+    	PostingsList pl;
 		PostingsEntry pe = new PostingsEntry(docID, offset);
 	
 		if  ( index.containsKey( token ) ) {
-		    // add docId
-		    //	    System.err.println("FOUND TOKEN IN KEYS");
-		    PostingsList pl = index.get( token );
-		    pl.add( pe );
+		    pl = index.get( token );
 		} else {
-		    //	    System.err.println("TOKEN NOT IN KEYS");
-		    PostingsList pl = new PostingsList();
-		    pl.add ( pe );
+		    pl = new PostingsList();
 		    index.put( token, pl );
 		}
+		pl.add( pe );
+		size++;
+    }
+
+    public void countIndexFiles() {
+    	File folder = new File("indexFiles/");
+		listOfFiles = folder.listFiles();
+		Arrays.sort( listOfFiles );
+		indexFileCount = listOfFiles.length;
+    }
+
+    public int getIndexFileCount() {
+    	return indexFileCount;
+    }
+
+    public int getSize() {
+    	return size;
+    }
+
+    private HashMap<String,PostingsList> loadIndexFile(String fileName) throws IOException, ClassNotFoundException {
+
+    	HashMap<String,PostingsList> tempIndex = new HashMap<String,PostingsList>();
+    	try {
+	    	File f = new File("indexFiles/"+fileName);
+	    	FileInputStream fis = new FileInputStream(f);
+			ObjectInputStream soi = new ObjectInputStream(fis);
+			tempIndex = (HashMap<String,PostingsList>) soi.readObject();
+			soi.close();
+		} catch (FileNotFoundException e) {
+			System.err.println("File: " + fileName + " does not exist yet.");
+		}
+		return tempIndex;
+   	}
+
+    private void saveIndexFile(String fileName, HashMap<String,PostingsList> idx) throws IOException, ClassNotFoundException {
+    	File file = new File( "indexFiles/"+fileName );
+    	FileOutputStream fos = new FileOutputStream(file);
+        ObjectOutputStream oos = new ObjectOutputStream(fos);
+        oos.writeObject(idx);
+        oos.close();
+    }
+
+    private String extractLetters(String token) {
+    	int m = (token.length() > 1) ? 2 : 1;
+    	int tl = token.length();
+    	if ( tl > 2 ) {
+    		m = 3;
+    	} else if ( tl > 1 ) {
+    		m = 2;
+    	} else {
+    		m = 1;
+    	}
+    	return token.substring(0,m);
+    }
+
+    public void saveToFile() throws IOException, ClassNotFoundException {
+    	
+    	// File file;// = new File("indexFiles/indexFile_"+ ++indexFileCount );
+
+     //    FileOutputStream fos;// = new FileOutputStream(file);
+     //    ObjectOutputStream oos;// = new ObjectOutputStream(fos);
+     //    // oos.writeObject(index);
+     //    // oos.close();
+
+        SortedSet<String> keys = new TreeSet<String>(index.keySet());
+        String currentLetter = extractLetters( keys.first() );
+        String tokenLetter;
+        System.out.println(currentLetter);
+
+        HashMap<String,PostingsList> tempIndex = new HashMap<String,PostingsList>();
+        tempIndex = loadIndexFile(currentLetter);
+        
+
+        for (String token : keys) {
+        	tokenLetter = extractLetters(token);
+        	
+        	if ( !currentLetter.equalsIgnoreCase( tokenLetter ) ) {
+        		saveIndexFile(currentLetter, tempIndex);
+        		currentLetter = tokenLetter;
+		        tempIndex = loadIndexFile(currentLetter);
+        	}
+        	// System.out.println(currentLetter);
+
+        	if ( tempIndex.containsKey(token) ) {
+        		tempIndex.get(token).addEntriesOf( index.get(token) );
+        	} else {
+        		tempIndex.put(token, index.get(token));
+        	}
+        	
+        }
+
+        saveIndexFile(currentLetter, tempIndex);
+    }
+
+    public void saveDocIDs() throws IOException, ClassNotFoundException {
+    	File file = new File( "docids/docids" );
+        FileOutputStream fos = new FileOutputStream(file);
+        ObjectOutputStream oos = new ObjectOutputStream(fos);
+        oos.writeObject(this.docIDs);
+        oos.close();
+    }
+
+    public void loadDocIDs() throws IOException, FileNotFoundException, ClassNotFoundException {
+    	File file = new File( "docids/docids" );
+    	FileInputStream fis = new FileInputStream(file);
+		ObjectInputStream soi = new ObjectInputStream(fis);
+		this.docIDs = (HashMap<String,String>) soi.readObject();
+    }
+
+
+    public void clear() {
+    	size = 0;
+    	// index = new HashMap<String,PostingsList>();
+        index.clear();
     }
 
 
@@ -50,10 +181,10 @@ public class HashedIndex implements Index {
      *  Returns all the words in the index.
      */
     public Iterator<String> getDictionary() {
-	// 
-	//  REPLACE THE STATEMENT BELOW WITH YOUR CODE
-	//
-	return index.keySet().iterator();
+		// 
+		//  REPLACE THE STATEMENT BELOW WITH YOUR CODE
+		//
+		return index.keySet().iterator();
     }
 
 
@@ -72,7 +203,7 @@ public class HashedIndex implements Index {
     /**
      *  Searches the index for postings matching the query.
      */
-    public PostingsList search( Query query, int queryType, int rankingType, int structureType ) {
+    public PostingsList search( Query query, int queryType, int rankingType, int structureType ) throws IOException, FileNotFoundException, ClassNotFoundException {
 		// 
 		//  REPLACE THE STATEMENT BELOW WITH YOUR CODE
 		//
@@ -91,15 +222,50 @@ public class HashedIndex implements Index {
 		return pl;
     }
 
-    private PostingsList phraseQuery( Query query ) {
+    /*
+	aggregates the PostingsList of a token from all index files.
+
+    */
+
+    private PostingsList getPostingsList(String token) throws IOException, FileNotFoundException, ClassNotFoundException {
+    	PostingsList aggregatedList = null;
+    	PostingsList tempList = null;
+    	int i=0;
+
+    	index = loadIndexFile( extractLetters(token) );
+    	return index.get( token );
+
+
+    	// for ( File f : listOfFiles ) {
+    	// 	System.out.println(i++);
+    	// 	System.out.println(f.getName());
+    	// 	// FileInputStream fis = new FileInputStream(f);
+    	// 	// ObjectInputStream soi = new ObjectInputStream(fis);
+    	// 	// index = (HashMap<String,PostingsList>) soi.readObject();
+    	// 	// soi.close();
+
+    	// 	index = loadIndexFile( "indexFiles/"+token.substring(0,1) );
+    	// 	tempList = index.get( token );
+    	// 	if ( tempList != null ) {
+    	// 		if ( aggregatedList != null ) {
+    	// 			aggregatedList.addEntriesOf( tempList );
+    	// 		} else {
+    	// 			aggregatedList = tempList;
+    	// 		}
+    	// 	}
+    	// }
+    	// return aggregatedList;
+    }
+
+    private PostingsList phraseQuery( Query query ) throws IOException, FileNotFoundException, ClassNotFoundException {
     	PostingsList answerList = null;
-		PostingsList currentList = index.get( query.terms.get(0) );
-	
+		PostingsList currentList = getPostingsList( query.terms.get(0) );
 		for (int termIdx=1; termIdx < query.terms.size(); termIdx++ ) {
 			answerList = new PostingsList();
-			PostingsList nextList = index.get( query.terms.get(termIdx) );
+			PostingsList nextList = getPostingsList( query.terms.get(termIdx) );
 			int i=0, j=0;
 			// System.err.println("--------------------term: "+termIdx+"---------------");
+			if (currentList == null || nextList == null) { return null; }
 
 			while ( i < currentList.size() && j < nextList.size() ) {
 				boolean tt = true;
@@ -155,14 +321,17 @@ public class HashedIndex implements Index {
     }
 
 
-    private PostingsList intersectionQuery( Query query ) {
+    private PostingsList intersectionQuery( Query query ) throws IOException, FileNotFoundException, ClassNotFoundException {
 		PostingsList answerList = null;
-		PostingsList currentList = index.get( query.terms.get(0) );
-	
+		PostingsList currentList = getPostingsList( query.terms.get(0) );
+		// System.out.println("intersectionQuery");
+		// System.out.println(currentList);
 		for (int termIdx=1; termIdx < query.terms.size(); termIdx++ ) {
 			answerList = new PostingsList();
-			PostingsList nextList = index.get( query.terms.get(termIdx) );
+			PostingsList nextList = getPostingsList( query.terms.get(termIdx) );
+			// System.out.println(nextList);
 			int i=0, j=0;
+			if (currentList == null || nextList == null) { return null; }
 
 			while ( i < currentList.size() && j < nextList.size() ) {
 				if ( currentList.get(i).docID == nextList.get(j).docID ) {

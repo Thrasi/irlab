@@ -11,6 +11,9 @@ package ir;
 
 import java.util.HashMap;
 import java.util.Iterator;
+import java.io.IOException;
+import java.io.FileNotFoundException;
+import java.lang.ClassNotFoundException;
 
 public interface Index {
 
@@ -32,13 +35,13 @@ public interface Index {
     public static final int BIGRAM = 1; 
     public static final int SUBPHRASE = 2; 
 	
-    public HashMap<String, String> docIDs = new HashMap<String,String>();
+    
     public HashMap<String,Integer> docLengths = new HashMap<String,Integer>();
 
     public void insert( String token, int docID, int offset );
     public Iterator<String> getDictionary();
     public PostingsList getPostings( String token );
-    public PostingsList search( Query query, int queryType, int rankingType, int structureType );
+    public PostingsList search( Query query, int queryType, int rankingType, int structureType ) throws IOException, FileNotFoundException, ClassNotFoundException;
     public void cleanup();
 
 }

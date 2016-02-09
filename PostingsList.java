@@ -22,7 +22,7 @@ public class PostingsList implements Serializable {
 
     /**  Number of postings in this list  */
     public int size() {
-	return list.size();
+	   return list.size();
     }
 
     /**  Returns the ith posting */
@@ -32,6 +32,14 @@ public class PostingsList implements Serializable {
 
     public void remove(int index) {
         list.remove(index);
+    }
+
+    public PostingsEntry getLast() {
+        return list.getLast();
+    } 
+
+    public PostingsEntry getFirst() {
+        return list.getFirst();
     }
 
     //
@@ -46,13 +54,28 @@ public class PostingsList implements Serializable {
     	int size = list.size();
     	if ( size > 0 ) {
     	    if ( list.getLast().docID < e.docID ) {
-    		  list.add( e );
+                list.add( e );
     	    } else if ( list.getLast().docID == e.docID ) {
                 list.getLast().addPosition( e.positions().get(0) );
             }
     	} else {
     	    list.add( e );
     	}
+    }
+
+
+    /* Merges two PostingsList by appending the other list to the current one. 
+    Does no reordering but makes sure that if the first entry of the current one
+    and the last element of the new one then the resulting list will not contain that duplicate.
+
+    This works perfectly if the elemnts are ordered. */
+    public void addEntriesOf(PostingsList pl) {
+        if ( this.getLast().docID == pl.getFirst().docID ) {
+            PostingsEntry pe1 = this.getLast();
+            PostingsEntry pe2 = pl.list.poll();
+            pe1.addAll( pe2.positions() );
+        } 
+        this.list.addAll( pl.list );
     }
 
     public String toString() {

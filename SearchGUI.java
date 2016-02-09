@@ -11,6 +11,8 @@ package ir;
 
 import java.io.File;
 import java.io.IOException;
+import java.io.FileNotFoundException;
+import java.lang.ClassNotFoundException;
 import java.io.BufferedReader;
 import java.io.InputStreamReader;
 import java.util.LinkedList;
@@ -173,34 +175,43 @@ public class SearchGUI extends JFrame {
 		    // Search and print results. Access to the index is synchronized since
 		    // we don't want to search at the same time we're indexing new files
 		    // (this might corrupt the index).
-		    synchronized ( indexLock ) {
-			results = indexer.index.search( query, queryType, rankingType, structureType ); 
-		    }
-		    StringBuffer buf = new StringBuffer();
-		    if ( results != null ) {
-			buf.append( "\nFound " + results.size() + " matching document(s)\n\n" );
-			for ( int i=0; i<results.size(); i++ ) {
-			    buf.append( " " + i + ". " );
-			    String filename = indexer.index.docIDs.get( "" + results.get(i).docID );
-			    if ( filename == null ) {
-				buf.append( "" + results.get(i).docID );
+		    try {
+			    synchronized ( indexLock ) {
+					results = indexer.index.search( query, queryType, rankingType, structureType ); 
+			    }
+			    StringBuffer buf = new StringBuffer();
+			    if ( results != null ) {
+					buf.append( "\nFound " + results.size() + " matching document(s)\n\n" );
+					for ( int i=0; i<results.size(); i++ ) {
+					    buf.append( " " + i + ". " );
+					    String filename = indexer.index.docIDs.get( "" + results.get(i).docID );
+					    if ( filename == null ) {
+							buf.append( "" + results.get(i).docID );
+					    }
+					    else {
+							buf.append( filename );
+					    }
+					    if ( queryType == Index.RANKED_QUERY ) {
+							buf.append( "   " + String.format( "%.5f", results.get(i).score )); 
+					    }
+					    buf.append( "\n" );
+					}
 			    }
 			    else {
-				buf.append( filename );
+					buf.append( "\nFound 0 matching document(s)\n\n" );
 			    }
-			    if ( queryType == Index.RANKED_QUERY ) {
-				buf.append( "   " + String.format( "%.5f", results.get(i).score )); 
-			    }
-			    buf.append( "\n" );
-			}
-		    }
-		    else {
-			buf.append( "\nFound 0 matching document(s)\n\n" );
-		    }
-		    resultWindow.setText( buf.toString() );
-		    resultWindow.setCaretPosition( 0 );
+			    resultWindow.setText( buf.toString() );
+			    resultWindow.setCaretPosition( 0 );
+			} catch (ClassNotFoundException ex) {
+				resultWindow.setText( ex.getLocalizedMessage() );
+			} catch (FileNotFoundException ex) {
+				resultWindow.setText( ex.getLocalizedMessage() );
+			} catch (IOException ex) {
+				resultWindow.setText( ex.getLocalizedMessage() );
+			} 
 		}
-	    };
+	};
+
 	queryWindow.registerKeyboardAction( search,
 					    "",
 					    KeyStroke.getKeyStroke( "ENTER" ),
@@ -211,36 +222,44 @@ public class SearchGUI extends JFrame {
 		    // Check that a ranked search has been made prior to the relevance feedback
 		    StringBuffer buf = new StringBuffer();
 		    if (( results != null ) && ( queryType == Index.RANKED_QUERY )) {
-			// Read user relevance feedback selections
-			boolean[] docIsRelevant = { false, false, false, false, false, false, false, false, false, false }; 
-			for ( int i = 0; i<10; i++ ) {
-			    docIsRelevant[i] = feedbackButton[i].isSelected(); 
-			}
-			// Expand the current search query with the documents marked as relevant 
-			query.relevanceFeedback( results, docIsRelevant, indexer );
-			
-			// Perform a new search with the weighted and expanded query. Access to the index is 
-			// synchronized since we don't want to search at the same time we're indexing new files
-			// (this might corrupt the index).
-			synchronized ( indexLock ) {
-			    results = indexer.index.search( query, queryType, rankingType, structureType );
-			}
-			buf.append( "\nSearch after relevance feedback:\n" );
-			buf.append( "\nFound " + results.size() + " matching document(s)\n\n" );
-			for ( int i=0; i<results.size(); i++ ) {
-			    buf.append( " " + i + ". " );
-			    String filename = indexer.index.docIDs.get( "" + results.get(i).docID );
-			    if ( filename == null ) {
-				buf.append( "" + results.get(i).docID );
-			    }
-			    else {
-				buf.append( filename );
-			    }
-			    buf.append( "   " + String.format( "%.5f", results.get(i).score ) + "\n" );
-			}
+				// Read user relevance feedback selections
+				boolean[] docIsRelevant = { false, false, false, false, false, false, false, false, false, false }; 
+				for ( int i = 0; i<10; i++ ) {
+				    docIsRelevant[i] = feedbackButton[i].isSelected(); 
+				}
+				// Expand the current search query with the documents marked as relevant 
+				query.relevanceFeedback( results, docIsRelevant, indexer );
+				
+				// Perform a new search with the weighted and expanded query. Access to the index is 
+				// synchronized since we don't want to search at the same time we're indexing new files
+				// (this might corrupt the index).
+				try {
+					synchronized ( indexLock ) {
+					    results = indexer.index.search( query, queryType, rankingType, structureType );
+					}
+					buf.append( "\nSearch after relevance feedback:\n" );
+					buf.append( "\nFound " + results.size() + " matching document(s)\n\n" );
+					for ( int i=0; i<results.size(); i++ ) {
+					    buf.append( " " + i + ". " );
+					    String filename = indexer.index.docIDs.get( "" + results.get(i).docID );
+					    if ( filename == null ) {
+							buf.append( "" + results.get(i).docID );
+					    }
+					    else {
+							buf.append( filename );
+					    }
+					    buf.append( "   " + String.format( "%.5f", results.get(i).score ) + "\n" );
+					}
+				} catch (ClassNotFoundException ex) {
+					resultWindow.setText( ex.getLocalizedMessage() );
+				} catch (FileNotFoundException ex) {
+					resultWindow.setText( ex.getLocalizedMessage() );
+				} catch (IOException ex) {
+					resultWindow.setText( ex.getLocalizedMessage() );
+				} 
 		    }
 		    else {
-			buf.append( "\nThere was no returned ranked list to give feedback on.\n\n" );
+				buf.append( "\nThere was no returned ranked list to give feedback on.\n\n" );
 		    }
 		    resultWindow.setText( buf.toString() );
 		    resultWindow.setCaretPosition( 0 );
@@ -340,16 +359,31 @@ public class SearchGUI extends JFrame {
      *   search at the same time we're indexing new files (this might 
      *   corrupt the index).
      */
-    private void index() {
-	synchronized ( indexLock ) {
-	    resultWindow.setText( "\n  Indexing, please wait..." );
-	    for ( int i=0; i<dirNames.size(); i++ ) {
-		File dokDir = new File( dirNames.get( i ));
-		indexer.processFiles( dokDir );
-	    }
-	    resultWindow.setText( "\n  Done!" );
-	}
+    private void index() throws IOException, ClassNotFoundException {
+		synchronized ( indexLock ) {
+
+			if ( indexer.index.getIndexFileCount() == 0 ) {
+				resultWindow.setText( "\n  Indexing, please wait..." );
+			    for ( int i=0; i<dirNames.size(); i++ ) {
+					File dokDir = new File( dirNames.get( i ));
+					indexer.processFiles( dokDir );
+			    }
+			    indexer.index.saveToFile();
+			    indexer.index.clear();
+			    indexer.index.saveDocIDs();
+			    indexer.index.countIndexFiles();
+			    restructureIndexFiles();
+			    resultWindow.setText( "\n  Done!" );
+			} else {
+				resultWindow.setText( "\n  Index files exist! \n  Not rebuilding index." );
+				indexer.index.loadDocIDs();
+			}
+		}
     };
+
+    private void restructureIndexFiles() {
+    	
+    }
 
 
     /* ----------------------------------------------- */
@@ -359,19 +393,19 @@ public class SearchGUI extends JFrame {
      *   Decodes the command line arguments.
      */
     private void decodeArgs( String[] args ) {
-	int i=0, j=0;
-	while ( i < args.length ) {
-	    if ( "-d".equals( args[i] )) {
-		i++;
-		if ( i < args.length ) {
-		    dirNames.add( args[i++] );
+		int i=0, j=0;
+		while ( i < args.length ) {
+		    if ( "-d".equals( args[i] )) {
+				i++;
+				if ( i < args.length ) {
+				    dirNames.add( args[i++] );
+				}
+		    }
+		    else {
+				System.err.println( "Unknown option: " + args[i] );
+				break;
+		    }
 		}
-	    }
-	    else {
-		System.err.println( "Unknown option: " + args[i] );
-		break;
-	    }
-	}
     }				    
 
 
@@ -379,10 +413,16 @@ public class SearchGUI extends JFrame {
 
 
     public static void main( String[] args ) {
-	SearchGUI s = new SearchGUI();
-	s.createGUI();
-	s.decodeArgs( args );
-	s.index();
+		SearchGUI s = new SearchGUI();
+		s.createGUI();
+		s.decodeArgs( args );
+		try {
+			s.index();
+		} catch ( IOException e ) {
+			s.resultWindow.setText( e.getLocalizedMessage() );
+		} catch ( ClassNotFoundException  e ) {
+			s.resultWindow.setText( e.getLocalizedMessage() );
+		}
     }
 
 }
