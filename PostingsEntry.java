@@ -48,10 +48,6 @@ public class PostingsEntry implements Comparable<PostingsEntry>, Serializable {
         positions.add(offset);
     }
 
-    public void addAll(LinkedList<Integer> newPositions) {
-        positions.addAll(newPositions);
-    }
-
 }
 
     
