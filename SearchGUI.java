@@ -372,6 +372,7 @@ public class SearchGUI extends JFrame {
 			    indexer.index.clear();
 			    indexer.index.saveDocIDs();
 			    indexer.index.countIndexFiles();
+			    restructureIndexFiles();
 			    resultWindow.setText( "\n  Done!" );
 			} else {
 				resultWindow.setText( "\n  Index files exist! \n  Not rebuilding index." );
@@ -379,6 +380,10 @@ public class SearchGUI extends JFrame {
 			}
 		}
     };
+
+    private void restructureIndexFiles() {
+    	
+    }
 
 
     /* ----------------------------------------------- */
