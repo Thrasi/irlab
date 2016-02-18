@@ -14,13 +14,17 @@ import java.util.HashMap;
 import java.util.Iterator;
 import java.util.Collections;
 import java.util.LinkedList;
-
+import java.util.ArrayList;
+import java.lang.Math;
 /**
  *   Implements an inverted index as a Hashtable from words to PostingsLists.
  */
 public class HashedIndex implements Index {
+    private int nrOfDocs = 17500;
     /** The index as a hashtable. */
     private HashMap<String,PostingsList> index = new HashMap<String,PostingsList>();
+    // private HashMap<Integer,Integer> lengths = new HashMap<Integer,Integer>();
+    private int[] lengths = new int[nrOfDocs];
 
 
     /**
@@ -43,6 +47,8 @@ public class HashedIndex implements Index {
 		    pl.add ( pe );
 		    index.put( token, pl );
 		}
+        lengths[docID] += 1;
+
     }
 
 
@@ -50,10 +56,10 @@ public class HashedIndex implements Index {
      *  Returns all the words in the index.
      */
     public Iterator<String> getDictionary() {
-	// 
-	//  REPLACE THE STATEMENT BELOW WITH YOUR CODE
-	//
-	return index.keySet().iterator();
+    	// 
+    	//  REPLACE THE STATEMENT BELOW WITH YOUR CODE
+    	//
+    	return index.keySet().iterator();
     }
 
 
@@ -85,10 +91,52 @@ public class HashedIndex implements Index {
 			pl = phraseQuery( query );    
 		} 
 		else if ( queryType == Index.RANKED_QUERY ) {
-
+            pl = rankedQuery( query );
 		}
 		
 		return pl;
+    }
+
+    private PostingsList rankedQuery( Query query ) {
+
+        int N = index.size();
+
+        PostingsList answerList = null;
+        PostingsList currentList = null;
+        // ArrayList<double> scores = new ArrayList<double>();
+        
+        HashMap<Integer,Double> scores = new HashMap<Integer,Double>();
+        for ( String term : query.terms ) {
+            currentList = index.get( term );
+            System.out.println("currentList: " + currentList.size());
+            double idft = Math.log( N / currentList.getDF() );
+            for ( PostingsEntry pe : currentList.getList() ) {
+                if (scores.containsKey(pe.docID)) {
+                    scores.put(pe.docID, scores.get(pe.docID) + pe.getTF()*idft);
+                } else {
+                    scores.put(pe.docID, pe.getTF()*idft);
+                }
+            }
+        }
+        // TreeMap<Double,Integer> sortedMap = new TreeMap<Double,Integer>();
+        answerList = new PostingsList();
+        LinkedList<PostingsEntry> tempList = new LinkedList<PostingsEntry>();
+        PostingsEntry pe = null;
+        System.out.println("scores keys: " + scores.keySet().size());
+        for (int doc : scores.keySet()) {
+            // scores.put(doc, scores.get(doc) / lengths[doc]);
+            double score = scores.get(doc) / lengths[doc];
+            pe = new PostingsEntry(doc);
+            pe.score = score;
+            tempList.add(pe);
+            // sortedScores.put(score, doc);
+        }
+        Collections.sort(tempList);
+        answerList.replaceList(tempList);
+        System.out.println("answerList: "+answerList.getList().size());
+        
+
+        return answerList;
     }
 
     private PostingsList phraseQuery( Query query ) {

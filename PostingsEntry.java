@@ -16,6 +16,8 @@ public class PostingsEntry implements Comparable<PostingsEntry>, Serializable {
     public int docID;
     public double score;
     private LinkedList<Integer> positions = new LinkedList<Integer>();
+    private double tfidf;
+    private int tf;
 
     /**
      *  PostingsEntries are compared by their score (only relevant 
@@ -32,20 +34,28 @@ public class PostingsEntry implements Comparable<PostingsEntry>, Serializable {
     //  YOUR CODE HERE
     //
     public PostingsEntry(int docID) {
-       this.docID = docID;
+        this.docID = docID;
     }
 
     public PostingsEntry(int docID, int offset) {
-	   this.docID = docID;
-       this.positions.add(offset);
+        this.docID = docID;
+        this.positions.add(offset);
+        this.tf = 1;
     }
 
     public LinkedList<Integer> positions() {
         return positions;
     }
 
+    /* term frequency */
+    public int getTF() {
+        return tf;
+    }
+
+    /* As we add a new position the term frequency increases*/
     public void addPosition(int offset) {
         positions.add(offset);
+        tf++;
     }
 
 }

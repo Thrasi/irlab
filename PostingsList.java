@@ -10,7 +10,6 @@ package ir;
 
 import java.util.LinkedList;
 import java.io.Serializable;
-
 /**
  *   A list of postings for a given word.
  */
@@ -22,7 +21,7 @@ public class PostingsList implements Serializable {
 
     /**  Number of postings in this list  */
     public int size() {
-	return list.size();
+	   return list.size();
     }
 
     /**  Returns the ith posting */
@@ -30,8 +29,17 @@ public class PostingsList implements Serializable {
 	   return list.get( i );
     }
 
-    public void remove(int index) {
+    public void remove( int index ) {
         list.remove(index);
+    }
+
+    /* document frequency */
+    public int getDF() {
+        return list.size();
+    }
+
+    public LinkedList<PostingsEntry> getList() {
+        return list;
     }
 
     //
@@ -53,6 +61,10 @@ public class PostingsList implements Serializable {
     	} else {
     	    list.add( e );
     	}
+    }
+
+    public void replaceList(LinkedList<PostingsEntry> l) {
+        list = l;
     }
 
     public String toString() {
