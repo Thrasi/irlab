@@ -165,9 +165,6 @@ public class PageRank{
      *   Computes the pagerank of each document.
      */
     void computePagerank( int numberOfDocs ) {
-	//
-	//   YOUR CODE HERE
-	//
         
         for (Map.Entry<String,Integer> entry : docNumber.entrySet()) {
             names.put(""+entry.getValue(),entry.getKey());
@@ -175,11 +172,11 @@ public class PageRank{
         System.out.println("Number of docs: " + numberOfDocs);
         double[] pi = new double[numberOfDocs+1];  // add one for convenience, We don't use the 0th element.
         double[] new_pi = new double[numberOfDocs+1];
-        pi[1] = 1;
+        pi[0] = 1;
 
         double[] transistion = new double[numberOfDocs+1];
 
-        for (int i=1;i<=numberOfDocs;i++) {
+        for (int i=0;i<numberOfDocs;i++) {
             Hashtable<Integer,Boolean> row = link.get(i);
             if (row != null) {
                 int N = row.size();
@@ -192,20 +189,19 @@ public class PageRank{
         Hashtable<Integer,Boolean> row;
         double sink = (1-BORED)/(numberOfDocs-1) + BORED/numberOfDocs;
         double no_link = BORED/numberOfDocs;
-        System.out.println(sink);
-        System.out.println(no_link);
+
         for (int iter=1;iter<=MAX_NUMBER_OF_ITERATIONS;iter++) {
             System.out.println("Iteration: "+ iter);
             new_pi = new double[numberOfDocs+1];
-            for (int i=1;i<=numberOfDocs;i++) {
+            for (int i=0;i<numberOfDocs;i++) {
                 row = link.get(i);
                 if (row == null) {
-                    for (int j=1;j<=numberOfDocs;j++) {
+                    for (int j=0;j<numberOfDocs;j++) {
                         new_pi[j] += sink*pi[i];
                     }
                     new_pi[i] -= (1-BORED)/(numberOfDocs-1)*pi[i];
                 } else {
-                    for (int j=1;j<=numberOfDocs;j++) {
+                    for (int j=0;j<numberOfDocs;j++) {
                         if (row.keySet().contains(j)) {
                             new_pi[j] += transistion[i] * pi[i];  
                         } else {
@@ -219,14 +215,14 @@ public class PageRank{
             boolean converged = true;
             double e = 0;
             double sum = 0;
-            for (int i=1;i<=numberOfDocs;i++) {
+            for (int i=0;i<numberOfDocs;i++) {
                 e = Math.max(e,Math.abs(new_pi[i]-pi[i]));
                 converged = converged && (Math.abs(new_pi[i]-pi[i]) < EPSILON);
                 pi[i] = new_pi[i];
                 sum += pi[i];
             }
             double sum2=0;
-            for (int i=1;i<=numberOfDocs;i++) {
+            for (int i=0;i<numberOfDocs;i++) {
                 pi[i] /= sum;
                 sum2 += pi[i];
             }
@@ -248,7 +244,7 @@ public class PageRank{
 
     private void printStatus(int numberOfDocs, double[] pi) {
         TreeMap<Double,Integer> s = new TreeMap<Double,Integer>();
-        for (int i=1;i<=numberOfDocs;i++) {
+        for (int i=0;i<numberOfDocs;i++) {
             s.put(pi[i],i);
         }
 
