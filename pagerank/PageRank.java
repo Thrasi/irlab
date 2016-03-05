@@ -49,6 +49,8 @@ public class PageRank{
      */
     int[] out = new int[MAX_NUMBER_OF_DOCS];
 
+    Hashtable<String,String> names = new Hashtable<String,String>();
+
     /**
      *   The number of documents with no outlinks.
      */
@@ -166,6 +168,10 @@ public class PageRank{
 	//
 	//   YOUR CODE HERE
 	//
+        
+        for (Map.Entry<String,Integer> entry : docNumber.entrySet()) {
+            names.put(""+entry.getValue(),entry.getKey());
+        }
         System.out.println("Number of docs: " + numberOfDocs);
         double[] pi = new double[numberOfDocs+1];  // add one for convenience, We don't use the 0th element.
         double[] new_pi = new double[numberOfDocs+1];
@@ -179,12 +185,12 @@ public class PageRank{
                 int N = row.size();
                 transistion[i] = (1 - BORED)/N + BORED/numberOfDocs;
             } else {
-                transistion[i] = 1/(numberOfDocs-1);
+                transistion[i] = (1-BORED)/(numberOfDocs-1) + BORED/numberOfDocs;
             }
         }
 
         Hashtable<Integer,Boolean> row;
-        double sink = 1.0/numberOfDocs;
+        double sink = (1-BORED)/(numberOfDocs-1) + BORED/numberOfDocs;
         double no_link = BORED/numberOfDocs;
         System.out.println(sink);
         System.out.println(no_link);
@@ -197,6 +203,7 @@ public class PageRank{
                     for (int j=1;j<=numberOfDocs;j++) {
                         new_pi[j] += sink*pi[i];
                     }
+                    new_pi[i] -= (1-BORED)/(numberOfDocs-1)*pi[i];
                 } else {
                     for (int j=1;j<=numberOfDocs;j++) {
                         if (row.keySet().contains(j)) {
@@ -205,6 +212,7 @@ public class PageRank{
                             new_pi[j] += no_link * pi[i];
                         }
                     }
+                    // no need to take care of the self jump since we already take cate of states with no links to i.e. no_link
                 }
             }
 
@@ -217,13 +225,18 @@ public class PageRank{
                 pi[i] = new_pi[i];
                 sum += pi[i];
             }
-            System.out.println("Sum: " + sum);
+            double sum2=0;
+            for (int i=1;i<=numberOfDocs;i++) {
+                pi[i] /= sum;
+                sum2 += pi[i];
+            }
+            System.out.println("Sum: " + sum + ",  Sum2: "+sum2);
 
             if  (iter%10 == 0) {
                 printStatus(numberOfDocs, pi);
             }
             System.out.println("Max error: " + e);
-            if (converged && iter > 20) {
+            if (converged && iter > 40) {
                 System.out.println("---");
                 System.out.println("Converged!!!!!"); 
 
@@ -242,7 +255,7 @@ public class PageRank{
         int i=0;
 
         for (Map.Entry<Double,Integer> entry : s.descendingMap().entrySet()) {
-            System.out.println((i+1)+": "+docName[entry.getValue()]+ " = "+ idResults[i] +" ### "+String.format("%.6f",entry.getKey() )+ " = "+String.format("%.6f",scoreResults[i]));
+            System.out.println((i+1)+": "+docName[entry.getValue()]+ " = "+ idResults[i] +" ### "+String.format("%.6f",entry.getKey() )+ " = "+String.format("%.6f",scoreResults[i]) + " ##### " +  names.get(docName[entry.getValue()]));
             i++;
             if (i==50) {
                 break;
