@@ -170,11 +170,11 @@ public class PageRank{
             names.put(""+entry.getValue(),entry.getKey());
         }
         System.out.println("Number of docs: " + numberOfDocs);
-        double[] pi = new double[numberOfDocs+1];  // add one for convenience, We don't use the 0th element.
-        double[] new_pi = new double[numberOfDocs+1];
+        double[] pi = new double[numberOfDocs]; 
+        double[] new_pi = new double[numberOfDocs];
         pi[0] = 1;
 
-        double[] transistion = new double[numberOfDocs+1];
+        double[] transistion = new double[numberOfDocs];
 
         for (int i=0;i<numberOfDocs;i++) {
             Hashtable<Integer,Boolean> row = link.get(i);
@@ -192,7 +192,7 @@ public class PageRank{
 
         for (int iter=1;iter<=MAX_NUMBER_OF_ITERATIONS;iter++) {
             System.out.println("Iteration: "+ iter);
-            new_pi = new double[numberOfDocs+1];
+            new_pi = new double[numberOfDocs];
             for (int i=0;i<numberOfDocs;i++) {
                 row = link.get(i);
                 if (row == null) {
