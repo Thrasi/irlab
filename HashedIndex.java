@@ -16,15 +16,23 @@ import java.util.Collections;
 import java.util.LinkedList;
 import java.util.ArrayList;
 import java.lang.Math;
+
+import java.util.*;
+import java.io.*;
+import java.util.stream.*;
 /**
  *   Implements an inverted index as a Hashtable from words to PostingsLists.
  */
 public class HashedIndex implements Index {
     private int nrOfDocs = 17500;
+    private double PAGERANKPROPORTION = 0.99;
+    private boolean sublinearScaling = false;
     /** The index as a hashtable. */
     private HashMap<String,PostingsList> index = new HashMap<String,PostingsList>();
     // private HashMap<Integer,Integer> lengths = new HashMap<Integer,Integer>();
     private int[] lengths = new int[nrOfDocs];
+    private HashMap<String,Double> pageRank = readName2RankFromFile("ir/pagerank/pageRankMap");
+    private double maxPageRank = getMaxPageRank();
 
 
     /**
@@ -92,6 +100,8 @@ public class HashedIndex implements Index {
 		} 
 		else if ( queryType == Index.RANKED_QUERY ) {
             pl = rankedQuery( query );
+            double p = getPageRankProportion(rankingType);
+            updateScores(pl,p);
 		}
 		
 		return pl;
@@ -103,41 +113,79 @@ public class HashedIndex implements Index {
 
         PostingsList answerList = null;
         PostingsList currentList = null;
-        // ArrayList<double> scores = new ArrayList<double>();
         
         HashMap<Integer,Double> scores = new HashMap<Integer,Double>();
         for ( String term : query.terms ) {
             currentList = index.get( term );
             System.out.println("currentList: " + currentList.size());
             double idft = Math.log( N / currentList.getDF() );
+            double wftd = 0;
             for ( PostingsEntry pe : currentList.getList() ) {
-                if (scores.containsKey(pe.docID)) {
-                    scores.put(pe.docID, scores.get(pe.docID) + pe.getTF()*idft);
+                if (sublinearScaling) {
+                    wftd = 1 + Math.log(pe.getTF());
                 } else {
-                    scores.put(pe.docID, pe.getTF()*idft);
+                    wftd = pe.getTF();
+                }
+                if (scores.containsKey(pe.docID)) {
+                    scores.put(pe.docID, scores.get(pe.docID) + wftd * idft);
+                    // lengths.put(pe.docID, scores.get(pe.docID) + Math.pow(pe.getTF()*idft,2) );
+                } else {
+                    scores.put(pe.docID, wftd * idft);
+                    // lengths.put(pe.docID, Math.pow(pe.getTF()*idft,2) );
                 }
             }
         }
-        // TreeMap<Double,Integer> sortedMap = new TreeMap<Double,Integer>();
         answerList = new PostingsList();
-        LinkedList<PostingsEntry> tempList = new LinkedList<PostingsEntry>();
+
+
+        LinkedList<PostingsEntry> tmpList = new LinkedList<PostingsEntry>();
         PostingsEntry pe = null;
-        System.out.println("scores keys: " + scores.keySet().size());
         for (int doc : scores.keySet()) {
             // scores.put(doc, scores.get(doc) / lengths[doc]);
-            double score = scores.get(doc) / lengths[doc];
+            double tfidf = scores.get(doc) / lengths[doc];//Math.sqrt(lengths.get(doc));
             pe = new PostingsEntry(doc);
-            pe.score = score;
-            tempList.add(pe);
-            // sortedScores.put(score, doc);
+            pe.score = tfidf;
+            tmpList.add(pe);
         }
-        Collections.sort(tempList);
-        answerList.replaceList(tempList);
+        
+        answerList.replaceList( tmpList );
         System.out.println("answerList: "+answerList.getList().size());
         
-
         return answerList;
     }
+
+    private void updateScores(PostingsList pl, double p) {
+        double maxTFIDF = 0;
+        maxPageRank = 0;
+        for (PostingsEntry pe : pl.getList()) {
+            maxTFIDF = Math.max(maxTFIDF,pe.score);
+            String docName = docIDs.get(""+pe.docID).split("/")[2];
+            int len = docName.length()-2;
+            docName = docName.substring(0,len);
+            maxPageRank = Math.max(maxPageRank,pageRank.get(docName));
+        }        
+        for (PostingsEntry pe : pl.getList()) {
+            String docName = docIDs.get(""+pe.docID).split("/")[2];
+            int len = docName.length()-2;
+            docName = docName.substring(0,len);
+            // pe.score = p*pageRank.get(docName)/maxPageRank + (1-p)*pe.score/maxTFIDF;
+            pe.score = p*pageRank.get(docName) + (1-p)*pe.score;
+        }
+        Collections.sort(pl.getList());
+    }
+
+    private double getPageRankProportion(int rankingType) {
+        double p = 0;
+        if (rankingType == Index.TF_IDF) {
+            p = 0;
+        } else if (rankingType == Index.PAGERANK) {
+            p = 1;
+        } else if (rankingType == Index.COMBINATION) {
+            p = PAGERANKPROPORTION;
+        }
+        return p;
+    }
+
 
     private PostingsList phraseQuery( Query query ) {
     	PostingsList answerList = null;
@@ -164,14 +212,7 @@ public class HashedIndex implements Index {
 
 					while ( ii < iMax && jj < jMax ) {
 						if ( pp2.get(jj) - pp1.get(ii) == 1 ) {
-							// if (tt) {
-							// 	System.err.println("FOUND A MATCHING DOC: " + docIDs.get(""+currentList.get(i).docID));
-							// 	tt=false;
-							// }
 							pe.addPosition( pp2.get(jj) );
-							// System.err.println("FOUND A MATCHING OFFSET");
-							// System.err.println(ii +" and "+ jj);
-							// System.err.println("Offsets: "+pp1.get(ii) +" and "+ pp2.get(jj));
 							ii++;
 							jj++;
 						} else {
@@ -228,6 +269,26 @@ public class HashedIndex implements Index {
 			currentList = answerList;
 		}
 		return currentList;
+    }
+
+    HashMap<String,Double> readName2RankFromFile(String fileName) {
+        HashMap<String,Double> result = null;
+        try {
+            FileInputStream fin = new FileInputStream(fileName);
+            ObjectInputStream ois = new ObjectInputStream(fin);
+            result = (HashMap<String,Double>)ois.readObject();
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+        return result;
+    }
+
+    double getMaxPageRank() {
+        double max = 0;
+        for (Map.Entry<String,Double> me : pageRank.entrySet()) {
+            max = Math.max(max, me.getValue());
+        }
+        return max;
     }
 
 

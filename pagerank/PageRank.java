@@ -86,12 +86,12 @@ public class PageRank{
         double[] exactRank  = readRankFromFile("exactRank");
         int N = 20;
         boolean dense = true;
-        computePagerank4or5( noOfDocs, exactRank, N, 5, dense );
+        // computePagerank4or5( noOfDocs, exactRank, N, 5, dense );
         // computePagerank4or5( noOfDocs, exactRank, N, 4, dense );
         // computePagerank3( noOfDocs, exactRank, N, dense );
         // computePagerank1or2( noOfDocs, exactRank, N, 2, dense );
         // computePagerank1or2( noOfDocs, exactRank, N, 1, dense );
-    	//computePagerank( noOfDocs );
+    	computePagerank( noOfDocs );
     }
 
 
@@ -451,10 +451,11 @@ public class PageRank{
             }
             System.out.println("Max error: " + e);
             System.out.println("sum of square errors: " + err);
-            if (converged && iter >= 18) {
+            if (converged && iter >= 100) {
                 System.out.println("---");
                 System.out.println("Converged!!!!!");
                 writeRankToFile("exactRank",pi);
+                writeName2Rank("pageRankMap",pi);
                 break;
             }
         }
@@ -470,7 +471,6 @@ public class PageRank{
             while ((line = in.readLine()) != null) {
                 parts = line.split(";");
                 results.put(Integer.parseInt(parts[0]), parts[1]);
-                // System.out.println(parts[0] + " : " + parts[1]);
             }
         }
         catch ( FileNotFoundException e ) {
@@ -506,6 +506,22 @@ public class PageRank{
             e.printStackTrace();
         }
     }
+
+    void writeName2Rank(String fileName, double[] rank) {
+        HashMap<String,Double> pageRank = new HashMap<String,Double>();
+        for (int i=0;i<rank.length;i++) {
+            String name = id2name.get(Integer.parseInt(docName[i]));
+            pageRank.put(name,rank[i]);
+        }
+        try {
+            FileOutputStream fout = new FileOutputStream(fileName);
+            ObjectOutputStream oos = new ObjectOutputStream(fout);
+            oos.writeObject(pageRank);
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+    }
+
     double[] readRankFromFile(String fileName) {
          double[] rank = null;
          try {
