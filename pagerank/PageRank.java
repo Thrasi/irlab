@@ -7,6 +7,7 @@
 
 import java.util.*;
 import java.io.*;
+import java.util.stream.*;
 
 
 public class PageRank{
@@ -66,7 +67,7 @@ public class PageRank{
      *   Convergence criterion: Transition probabilities do not 
      *   change more that EPSILON from one iteration to another.
      */
-    final static double EPSILON = 0.00001;
+    final static double EPSILON = 0.0001;
 
     /**
      *   Never do more than this number of iterations regardless
@@ -76,11 +77,21 @@ public class PageRank{
 
     
     /* --------------------------------------------- */
-
+    /** Stores the mapping between ids and names */
+    HashMap<Integer,String> id2name;
 
     public PageRank( String filename ) {
     	int noOfDocs = readDocs( filename );
-    	computePagerank( noOfDocs );
+        id2name = readId2Name();
+        double[] exactRank  = readRankFromFile("exactRank");
+        int N = 20;
+        boolean dense = true;
+        computePagerank4or5( noOfDocs, exactRank, N, 5, dense );
+        // computePagerank4or5( noOfDocs, exactRank, N, 4, dense );
+        // computePagerank3( noOfDocs, exactRank, N, dense );
+        // computePagerank1or2( noOfDocs, exactRank, N, 2, dense );
+        // computePagerank1or2( noOfDocs, exactRank, N, 1, dense );
+    	//computePagerank( noOfDocs );
     }
 
 
@@ -161,8 +172,212 @@ public class PageRank{
     /* --------------------------------------------- */
 
 
+    void computePagerank1or2( int numberOfDocs, double[] exactRank, int N, int task, boolean dense ) {
+        int printEvery = (dense) ? 100 : numberOfDocs;
+        Random rand = new Random();
+        double pi[] = new double[numberOfDocs];
+        int counter = 0;
+        int currentState = -1;
+        int endState = -1;
+        compareToExact(pi,exactRank);
+        for (int j=0;j<N;j++) {
+            for (int startState=0;startState<numberOfDocs;startState++) {
+                if (task==2) {
+                    currentState = startState; 
+                } else if (task==1){
+                    currentState = rand.nextInt(numberOfDocs);
+                }
+                endState = doRandomWalk(currentState, numberOfDocs, rand);
+                pi[endState] += 1;
+                counter++;  
+                if (counter%printEvery==0) {
+                    // System.err.println("iteration: " + counter);
+                    double[] normPi = normalize(pi);
+                    compareToExact(normPi,exactRank);
+                }
+            }
+        }
+        pi = normalize(pi);
+        printStatus(numberOfDocs, pi);
+    }
+
+    
+
+    void computePagerank3( int numberOfDocs, double[] exactRank, int N, boolean dense ) {
+        int printEvery = (dense) ? 100 : numberOfDocs;
+        
+        Random rand = new Random();
+        double pi[] = new double[numberOfDocs];
+        int counter = 0;
+        compareToExact(pi,exactRank);
+        for (int j=0;j<N;j++) {
+            for (int startState=0;startState<numberOfDocs;startState++) {
+                HashMap<Integer,Integer> history = doRandomWalkHistory(startState, numberOfDocs, rand);
+                // int sum=0;
+                // for (Map.Entry<Integer,Integer> me : history.entrySet()) {
+                //     sum += me.getValue();
+                // }
+                // double n = N*numberOfDocs*sum;
+                for (Map.Entry<Integer,Integer> me : history.entrySet()) {
+                    pi[me.getKey()] += (me.getValue() );/// n);
+                }
+                counter++;  
+                if (counter%printEvery==0) {
+                    // System.err.println("iteration: " + counter);
+                    double[] normPi = normalize(pi);
+                    compareToExact(normPi,exactRank);
+                }
+            }
+        }
+        pi = normalize(pi);
+        printStatus(numberOfDocs, pi);   
+    }
+
+    void computePagerank4or5( int numberOfDocs, double[] exactRank, int N, int task, boolean dense ) {
+        int printEvery = (dense) ? 100 : numberOfDocs;
+        Random rand = new Random();
+        double pi[] = new double[numberOfDocs];
+        int counter = 0;
+        Hashtable<Integer,Boolean> outlinks;
+        int newState;
+        int currentState=-1;
+        compareToExact(pi,exactRank);
+        for (int j=0;j<N;j++) {
+            for (int startState=0;startState<numberOfDocs;startState++) {
+                if (task==4) {
+                    currentState = startState;
+                } else if (task==5) {
+                    currentState = rand.nextInt(numberOfDocs);
+                } else {
+                    System.err.println("task has to be 4 or 5, not: " + task);
+                }
+                
+                HashMap<Integer,Integer> history = new HashMap<Integer,Integer>();
+                history.put(currentState, 1); 
+                boolean not_sink = true;
+                double c = 1;
+                while (not_sink && c > BORED) {
+                    outlinks = link.get(currentState);
+                    if (outlinks == null) {
+                        not_sink = false;
+                    } else {
+                        newState = (int)(outlinks.keySet().toArray()[rand.nextInt(outlinks.size())]);
+                        if (history.keySet().contains(newState)) {
+                        history.put(newState, history.get(newState) + 1 ); 
+                        } else {
+                            history.put(newState,1);
+                        }
+                        currentState = newState;
+                    }
+                    c = rand.nextDouble();
+                    
+                }
+                for (Map.Entry<Integer,Integer> me : history.entrySet()) {
+                    pi[me.getKey()] += me.getValue();
+                }
+                counter++;  
+                if (counter%printEvery==0) {
+                    double[] normPi = normalize(pi);
+                    compareToExact(normPi,exactRank);
+                }
+            }
+        }
+        pi = normalize(pi);
+        printStatus(numberOfDocs, pi);   
+    }
+
+    void compareToExact(double[] pi, double[] exactRank) {
+        ArrayList<Map.Entry<Integer,Double>> aprox = createSortedList(pi, pi.length);
+        ArrayList<Map.Entry<Integer,Double>> exact = createSortedList(exactRank, exactRank.length);
+        double topSum = 0;
+        double lowSum = 0;
+        int size = pi.length;
+        for (int i=0;i<50;i++) {
+            //System.out.println(pi[i]);
+            topSum += Math.abs(aprox.get(i).getValue()-exact.get(i).getValue());
+            lowSum += Math.abs(aprox.get(size - 1 - i).getValue()-exact.get(size - i - 1).getValue());
+        }
+        System.out.println(topSum + " " + lowSum);
+    }
+
+    ArrayList<Map.Entry<Integer,Double>> createSortedList(double[] pi, int numberOfDocs) {
+        HashMap<Integer,Double> ss = new HashMap<Integer,Double>();
+        ArrayList<Map.Entry<Integer,Double>> list = new ArrayList<Map.Entry<Integer,Double>>();
+        for (int i=0;i<numberOfDocs;i++) {
+            ss.put(i,pi[i]);
+        }
+        for (Map.Entry<Integer,Double> me : ss.entrySet()){
+            list.add(me);
+        }
+        Collections.sort(list, new ValueComparator());
+        return list;
+    }
+
+    double[] normalize(double[] pi) {
+        double[] normPi = new double[pi.length];
+        double sum = DoubleStream.of(pi).sum();
+        int size = pi.length;
+        for (int i=0;i<size;i++) {
+            normPi[i] = pi[i] / sum;
+        }
+        return normPi;
+    }
+
+    int doRandomWalk(int startState, int numberOfDocs, Random rand) {
+        double c = 1;
+        int currentState = startState;
+        Hashtable<Integer,Boolean> outlinks; 
+        int newState;
+        while (c > BORED) {
+            outlinks = link.get(currentState);
+            if (outlinks == null) {
+                newState = currentState;
+                while (newState == currentState) {
+                    newState = rand.nextInt(numberOfDocs);
+                }
+            } else {
+                int j = rand.nextInt(outlinks.size());
+                newState = (int)(outlinks.keySet().toArray()[j]);
+            }
+            currentState = newState;
+            c = rand.nextDouble();
+        }
+        return currentState;
+    }
+
+    HashMap<Integer,Integer> doRandomWalkHistory(int startState, int numberOfDocs, Random rand) {
+        double c = 1;
+        int currentState = startState;
+        Hashtable<Integer,Boolean> outlinks; 
+        int newState;
+        HashMap<Integer,Integer> history = new HashMap<Integer,Integer>();
+        history.put(currentState, 1); 
+        while (c > BORED) {
+            outlinks = link.get(currentState);
+            if (outlinks == null) {
+                newState = currentState;
+                while (newState == currentState) {
+                    newState = rand.nextInt(numberOfDocs);
+                }
+            } else {
+                int j = rand.nextInt(outlinks.size());
+                newState = (int)(outlinks.keySet().toArray()[j]);
+            }
+            if (history.keySet().contains(newState)) {
+                history.put(newState, history.get(newState) + 1 ); 
+            } else {
+                history.put(newState,1);
+            }
+            currentState = newState;
+            c = rand.nextDouble();
+        }
+        return history;
+    }
+
+
+
     /*
-     *   Computes the pagerank of each document.
+     *   Computes the pagerank of each document. Exact calculation.
      */
     void computePagerank( int numberOfDocs ) {
         
@@ -215,12 +430,15 @@ public class PageRank{
             boolean converged = true;
             double e = 0;
             double sum = 0;
+            double err = 0;
             for (int i=0;i<numberOfDocs;i++) {
-                e = Math.max(e,Math.abs(new_pi[i]-pi[i]));
+                e = Math.sqrt(Math.max(e,Math.abs(new_pi[i]-pi[i])));
+                err += Math.pow(new_pi[i]-pi[i],2);
                 converged = converged && (Math.abs(new_pi[i]-pi[i]) < EPSILON);
                 pi[i] = new_pi[i];
                 sum += pi[i];
             }
+            converged = err < EPSILON;
             double sum2=0;
             for (int i=0;i<numberOfDocs;i++) {
                 pi[i] /= sum;
@@ -232,26 +450,43 @@ public class PageRank{
                 printStatus(numberOfDocs, pi);
             }
             System.out.println("Max error: " + e);
-            if (converged && iter > 40) {
+            System.out.println("sum of square errors: " + err);
+            if (converged && iter >= 18) {
                 System.out.println("---");
-                System.out.println("Converged!!!!!"); 
-
+                System.out.println("Converged!!!!!");
+                writeRankToFile("exactRank",pi);
                 break;
             }
         }
         printStatus(numberOfDocs, pi);
     }
 
-    private void printStatus(int numberOfDocs, double[] pi) {
-        TreeMap<Double,Integer> s = new TreeMap<Double,Integer>();
-        for (int i=0;i<numberOfDocs;i++) {
-            s.put(pi[i],i);
+    private HashMap<Integer,String> readId2Name() {
+        HashMap<Integer,String> results = new HashMap<Integer,String>();
+        String filename = "articleTitles.txt";
+        try {
+            BufferedReader in = new BufferedReader( new FileReader( filename ));
+            String line; String[] parts;
+            while ((line = in.readLine()) != null) {
+                parts = line.split(";");
+                results.put(Integer.parseInt(parts[0]), parts[1]);
+                // System.out.println(parts[0] + " : " + parts[1]);
+            }
         }
+        catch ( FileNotFoundException e ) {
+            System.err.println( "File " + filename + " not found!" );
+        }
+        catch ( IOException e ) {
+            System.err.println( "Error reading file " + filename );
+        }
+        return results;
+    }
 
+    private void printStatus(int numberOfDocs, double[] pi) {
+        ArrayList<Map.Entry<Integer,Double>> list = createSortedList(pi,pi.length);
         int i=0;
-
-        for (Map.Entry<Double,Integer> entry : s.descendingMap().entrySet()) {
-            System.out.println((i+1)+": "+docName[entry.getValue()]+ " = "+ idResults[i] +" ### "+String.format("%.6f",entry.getKey() )+ " = "+String.format("%.6f",scoreResults[i]) + " ##### " +  names.get(docName[entry.getValue()]));
+        for (Map.Entry<Integer,Double> entry : list) {
+            System.out.println((i+1)+": "+docName[entry.getKey()]+ " = "+ idResults[i] +" ### "+String.format("%.6f",entry.getValue() )+ " = "+String.format("%.6f",scoreResults[i]) + " ##### " +  id2name.get(Integer.parseInt(docName[entry.getKey()]) ));
             i++;
             if (i==50) {
                 break;
@@ -259,6 +494,35 @@ public class PageRank{
         }
     }
 
+
+
+
+    void writeRankToFile(String fileName, double[] rank) {
+        try {
+            FileOutputStream fout = new FileOutputStream(fileName);
+            ObjectOutputStream oos = new ObjectOutputStream(fout);
+            oos.writeObject(rank);
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+    }
+    double[] readRankFromFile(String fileName) {
+         double[] rank = null;
+         try {
+            FileInputStream fin = new FileInputStream(fileName);
+            ObjectInputStream ois = new ObjectInputStream(fin);
+            rank = (double[])ois.readObject();
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+        return rank;
+    }
+
+    static class ValueComparator implements Comparator<Map.Entry<Integer,Double>> {
+        public int compare(Map.Entry<Integer,Double> c1, Map.Entry<Integer,Double> c2) {
+            return -c1.getValue().compareTo(c2.getValue());
+        }
+    }
 
     /* --------------------------------------------- */
 
