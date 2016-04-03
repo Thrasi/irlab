@@ -70,10 +70,20 @@ public class PostingsList implements Serializable {
     public String toString() {
         String output="\n";
         for (int i=0;i<list.size();i++){
-            output = output + list.get(i).docID + ", ";
+            output = output + list.get(i).docID + ":"+list.get(i).getTF()+", ";
         }
         output = output + "\n";
         return output;
+    }
+
+
+    public double searchPL(int id){
+        for(PostingsEntry pe: list){
+            if(pe.docID == id){
+                return pe.score;
+            }
+        }
+        return 0;
     }
 }
 	

@@ -39,7 +39,7 @@ public class SearchGUI extends JFrame {
     LinkedList<String> dirNames = new LinkedList<String>();
 
     /**  The query type (either intersection, phrase, or ranked). */
-    int queryType = Index.INTERSECTION_QUERY;
+    int queryType = Index.RANKED_QUERY;
 
     /**  The index type (either entirely in memory or partly on disk). */
     int indexType = Index.HASHED_INDEX;
@@ -135,7 +135,8 @@ public class SearchGUI extends JFrame {
 	structure.add( unigramItem ); 
 	structure.add( bigramItem ); 
 	structure.add( subphraseItem ); 
-	intersectionItem.setSelected( true );
+	// intersectionItem.setSelected( true );
+	rankedItem.setSelected( true );
 	tfidfItem.setSelected( true );
 	unigramItem.setSelected( true );
 	p.add( menuBar );
@@ -341,16 +342,27 @@ public class SearchGUI extends JFrame {
      *   corrupt the index).
      */
     private void index() {
-	synchronized ( indexLock ) {
-	    resultWindow.setText( "\n  Indexing, please wait..." );
-	    for ( int i=0; i<dirNames.size(); i++ ) {
-		File dokDir = new File( dirNames.get( i ));
-		indexer.processFiles( dokDir );
-	    }
-	    resultWindow.setText( "\n  Done!" );
-	}
+		synchronized ( indexLock ) {
+			if (indexExists()) {
+				resultWindow.setText( "\n  Index exists, Done!" );
+			} else {
+			    resultWindow.setText( "\n  Indexing, please wait..." );
+			    for ( int i=0; i<dirNames.size(); i++ ) {
+					File dokDir = new File( dirNames.get( i ));
+
+					indexer.processFiles( dokDir );
+			    }
+			    resultWindow.setText( "\n  Done!" );
+			}
+		}
     };
 
+    public boolean indexExists() {
+        File folder = new File("ir/indexFiles/");
+        File[] listOfFiles = folder.listFiles();
+        return false;
+        // return listOfFiles.length > 1;
+    }
 
     /* ----------------------------------------------- */
 

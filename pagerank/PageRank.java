@@ -84,14 +84,14 @@ public class PageRank{
     	int noOfDocs = readDocs( filename );
         id2name = readId2Name();
         double[] exactRank  = readRankFromFile("exactRank");
-        int N = 20;
-        boolean dense = true;
+        int N = 2000;
+        boolean dense = false;
         // computePagerank4or5( noOfDocs, exactRank, N, 5, dense );
         // computePagerank4or5( noOfDocs, exactRank, N, 4, dense );
         // computePagerank3( noOfDocs, exactRank, N, dense );
         // computePagerank1or2( noOfDocs, exactRank, N, 2, dense );
-        // computePagerank1or2( noOfDocs, exactRank, N, 1, dense );
-    	computePagerank( noOfDocs );
+        computePagerank1or2( noOfDocs, exactRank, N, 1, dense );
+    	// computePagerank( noOfDocs );
     }
 
 
@@ -213,11 +213,6 @@ public class PageRank{
         for (int j=0;j<N;j++) {
             for (int startState=0;startState<numberOfDocs;startState++) {
                 HashMap<Integer,Integer> history = doRandomWalkHistory(startState, numberOfDocs, rand);
-                // int sum=0;
-                // for (Map.Entry<Integer,Integer> me : history.entrySet()) {
-                //     sum += me.getValue();
-                // }
-                // double n = N*numberOfDocs*sum;
                 for (Map.Entry<Integer,Integer> me : history.entrySet()) {
                     pi[me.getKey()] += (me.getValue() );/// n);
                 }
@@ -255,7 +250,7 @@ public class PageRank{
                 HashMap<Integer,Integer> history = new HashMap<Integer,Integer>();
                 history.put(currentState, 1); 
                 boolean not_sink = true;
-                double c = 1;
+                double c = rand.nextDouble();
                 while (not_sink && c > BORED) {
                     outlinks = link.get(currentState);
                     if (outlinks == null) {
@@ -324,7 +319,7 @@ public class PageRank{
     }
 
     int doRandomWalk(int startState, int numberOfDocs, Random rand) {
-        double c = 1;
+        double c = rand.nextDouble();
         int currentState = startState;
         Hashtable<Integer,Boolean> outlinks; 
         int newState;
@@ -346,7 +341,7 @@ public class PageRank{
     }
 
     HashMap<Integer,Integer> doRandomWalkHistory(int startState, int numberOfDocs, Random rand) {
-        double c = 1;
+        double c = rand.nextDouble();
         int currentState = startState;
         Hashtable<Integer,Boolean> outlinks; 
         int newState;

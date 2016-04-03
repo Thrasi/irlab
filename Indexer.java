@@ -41,12 +41,12 @@ public class Indexer {
 
     /** Generates a new document identifier as an integer. */
     private int generateDocID() {
-	return lastDocID++;
+		return lastDocID++;
     }
 
     /** Generates a new document identifier based on the file name. */
     private int generateDocID( String s ) {
-	return s.hashCode();
+		return s.hashCode();
     }
 
 
@@ -57,7 +57,7 @@ public class Indexer {
      *  Initializes the index as a HashedIndex.
      */
     public Indexer() {
-	index = new HashedIndex();
+		index = new HashedIndex();
     }
 
 
@@ -68,8 +68,10 @@ public class Indexer {
      *  Tokenizes and indexes the file @code{f}. If @code{f} is a directory,
      *  all its files and subdirectories are recursively processed.
      */
+    int kk = 0;
     public void processFiles( File f ) {
 	// do not try to index fs that cannot be read
+    // System.out.println("sadGdFAGDFG");
 	if ( f.canRead() ) {
 	    if ( f.isDirectory() ) {
 		String[] fs = f.list();
@@ -83,6 +85,10 @@ public class Indexer {
 		//System.err.println( "Indexing " + f.getPath() );
 		// First register the document and get a docID
 		int docID = generateDocID();
+		// if (docID>3) {
+		// 	return;
+		// }
+		// System.out.println(f.getPath());
 		index.docIDs.put( "" + docID, f.getPath() );
 		try {
 		    //  Read the first few bytes of the file to see if it is 
@@ -129,15 +135,15 @@ public class Indexer {
      *  Extracts the textual contents from a PDF file as one long string.
      */
     public String extractPDFContents( File f ) throws IOException {
-	FileInputStream fi = new FileInputStream( f );
-	PDFParser parser = new PDFParser( fi );   
-	parser.parse();   
-	fi.close();
-	COSDocument cd = parser.getDocument();   
-	PDFTextStripper stripper = new PDFTextStripper();   
-	String result = stripper.getText( new PDDocument( cd ));  
-	cd.close();
-	return result;
+		FileInputStream fi = new FileInputStream( f );
+		PDFParser parser = new PDFParser( fi );   
+		parser.parse();   
+		fi.close();
+		COSDocument cd = parser.getDocument();   
+		PDFTextStripper stripper = new PDFTextStripper();   
+		String result = stripper.getText( new PDDocument( cd ));  
+		cd.close();
+		return result;
     }
 
 
@@ -148,7 +154,7 @@ public class Indexer {
      *  Indexes one token.
      */
     public void insertIntoIndex( int docID, String token, int offset ) {
-	index.insert( token, docID, offset );
+		index.insert( token, docID, offset );
     }
 }
 	

@@ -24,24 +24,31 @@ import java.util.stream.*;
  *   Implements an inverted index as a Hashtable from words to PostingsLists.
  */
 public class HashedIndex implements Index {
-    private int nrOfDocs = 17500;
+    // private int nrOfDocs = 17500;
     private double PAGERANKPROPORTION = 0.99;
     private boolean sublinearScaling = false;
     /** The index as a hashtable. */
     private HashMap<String,PostingsList> index = new HashMap<String,PostingsList>();
-    // private HashMap<Integer,Integer> lengths = new HashMap<Integer,Integer>();
-    private int[] lengths = new int[nrOfDocs];
+    private HashMap<Integer,HashMap<String,Integer>> bagsOfWords = new HashMap<Integer,HashMap<String,Integer>>();
+    // private int[] lengths = new int[nrOfDocs];
     private HashMap<String,Double> pageRank = readName2RankFromFile("ir/pagerank/pageRankMap");
     private double maxPageRank = getMaxPageRank();
+    // private HashMap<Integer,Double> magnitude = new HashMap<Integer,Double>();
+
 
 
     /**
      *  Inserts this token in the index.
      */
+    // public HashedIndex() {
+    //     readIndex();
+    // }
+
     public void insert( String token, int docID, int offset ) {
 	//
 	//  YOUR CODE HERE
-	//
+	// 
+
 		PostingsEntry pe = new PostingsEntry(docID, offset);
 	
 		if  ( index.containsKey( token ) ) {
@@ -55,8 +62,27 @@ public class HashedIndex implements Index {
 		    pl.add ( pe );
 		    index.put( token, pl );
 		}
+        // docLengths.put(docID,docLengths) += 1;
         lengths[docID] += 1;
+        addToBags( token, docID );
+        // System.err.println(token);
+    }
 
+    private void addToBags( String token, int docID ) {
+        // HashMap<String,Integer> bag = bagsOfWords.containsKey(docID) ? bagsOfWords.get(docID) : new HashMap<String,Integer>();
+        // int count = bag.containsKey(token) ? bag.get(token) + 1 : 1;
+        // bag.put(token, count );
+        // bagsOfWords.put(docID, bag);
+        if ( bagsOfWords.containsKey(docID) ) {
+            HashMap<String,Integer> bag = bagsOfWords.get(docID);
+            int count = bag.containsKey(token) ? bag.get(token) : 0;
+            count++;
+            bag.put(token, count);
+        } else {
+            HashMap<String,Integer> bag = new HashMap<String,Integer>();
+            bag.put(token, 1);
+            bagsOfWords.put(docID, bag);
+        }
     }
 
 
@@ -101,48 +127,98 @@ public class HashedIndex implements Index {
 		else if ( queryType == Index.RANKED_QUERY ) {
             pl = rankedQuery( query );
             double p = getPageRankProportion(rankingType);
-            updateScores(pl,p);
+            // updateScores(pl,p);
+            Collections.sort(pl.getList());
 		}
 		
 		return pl;
     }
 
-    private PostingsList rankedQuery( Query query ) {
+    public double idf( String term ) {
+        PostingsList pl = index.get( term );
+        double N = docLengths.size();//lengths.length;
+        // System.out.println("N: "+N);
+        // System.out.println("pl.getDF()+1: "+(pl.getDF()+1));
+        double df = pl.getDF();
+        return Math.log( (N+2) / (df+1) );
+    }
 
-        int N = index.size();
+
+
+    private PostingsList rankedQuery( Query query ) {
 
         PostingsList answerList = null;
         PostingsList currentList = null;
         
-        HashMap<Integer,Double> scores = new HashMap<Integer,Double>();
-        for ( String term : query.terms ) {
+        scores.clear();
+        magnitude.clear();
+        int weightIdx = 0;
+        double weightSum = 0;
+        double norm = 0;
+
+        
+
+
+        for (double d : query.weights) {
+            norm += d*d;
+        }
+        norm = Math.sqrt(norm);
+
+
+
+
+        for (int i = 0; i<query.size();i++) {
+            String term = query.terms.get(i);
+            if ( index.containsKey( term ) == false ) {
+                continue;
+            }
+            double termWeight = query.weights.get(weightIdx) / norm;
+            double idf = idf( term );
+            double tf = 0;
             currentList = index.get( term );
-            System.out.println("currentList: " + currentList.size());
-            double idft = Math.log( N / currentList.getDF() );
-            double wftd = 0;
+
+            weightSum += termWeight*termWeight;
+            System.out.println(idf);
             for ( PostingsEntry pe : currentList.getList() ) {
-                if (sublinearScaling) {
-                    wftd = 1 + Math.log(pe.getTF());
-                } else {
-                    wftd = pe.getTF();
-                }
+                tf = pe.getTF();
+                // System.out.println("tf: "+tf);
+                // System.out.println("idf: "+idf);
+                double score = tf * idf * termWeight;
                 if (scores.containsKey(pe.docID)) {
-                    scores.put(pe.docID, scores.get(pe.docID) + wftd * idft);
-                    // lengths.put(pe.docID, scores.get(pe.docID) + Math.pow(pe.getTF()*idft,2) );
+                    scores.put(pe.docID, scores.get(pe.docID) + score);
+                    magnitude.put(pe.docID, magnitude.get(pe.docID) + score*score );
                 } else {
-                    scores.put(pe.docID, wftd * idft);
-                    // lengths.put(pe.docID, Math.pow(pe.getTF()*idft,2) );
+                    scores.put(pe.docID, score);
+                    magnitude.put(pe.docID, score*score );
                 }
             }
+            weightIdx++;
+
         }
+        
+        System.out.println("sum of weights squared: "+weightSum);
         answerList = new PostingsList();
 
 
         LinkedList<PostingsEntry> tmpList = new LinkedList<PostingsEntry>();
         PostingsEntry pe = null;
         for (int doc : scores.keySet()) {
-            // scores.put(doc, scores.get(doc) / lengths[doc]);
-            double tfidf = scores.get(doc) / lengths[doc];//Math.sqrt(lengths.get(doc));
+            
+            double tfidf;
+            if (magnitude.get(doc)==0) {
+                tfidf = 0;
+            } else {
+                // tfidf = scores.get(doc) / Math.sqrt(magnitude.get(doc));//lengths[doc];//Math.sqrt(lengths.get(doc));
+                tfidf = scores.get(doc) / lengths[doc];//Math.sqrt( lengths[doc] );//Math.sqrt(lengths.get(doc));
+                tfidf = scores.get(doc) / Math.sqrt( lengths[doc] );
+                // tfidf = scores.get(doc);
+                // tfidf = scores.get(doc) / Math.sqrt(docLengths.get(doc));
+            }
+            // System.out.println("magnitude: "+magnitude.get(doc));
+            
+            // double tfidf = scores.get(doc) / Math.sqrt(magnitude.get(doc));//lengths[doc];//Math.sqrt(lengths.get(doc));
+            // double tfidf = scores.get(doc) / lengths[doc];//Math.sqrt(lengths.get(doc));
+            // double tfidf = scores.get(doc);
             pe = new PostingsEntry(doc);
             pe.score = tfidf;
             tmpList.add(pe);
@@ -171,7 +247,6 @@ public class HashedIndex implements Index {
             // pe.score = p*pageRank.get(docName)/maxPageRank + (1-p)*pe.score/maxTFIDF;
             pe.score = p*pageRank.get(docName) + (1-p)*pe.score;
         }
-        Collections.sort(pl.getList());
     }
 
     private double getPageRankProportion(int rankingType) {
@@ -296,5 +371,28 @@ public class HashedIndex implements Index {
      *  No need for cleanup in a HashedIndex.
      */
     public void cleanup() {
+        try {
+            System.out.println("Start writing index");
+            String fileName = "ir/indexFiles/invertedIndex";
+            FileOutputStream fout = new FileOutputStream(fileName);
+            ObjectOutputStream oos = new ObjectOutputStream(fout);
+            oos.writeObject(index);
+            System.out.println("Start writing bagsOfWords");
+            fileName = "ir/indexFiles/bagsOfWords";
+            fout = new FileOutputStream(fileName);
+            oos = new ObjectOutputStream(fout);
+            oos.writeObject(index);
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+
+    }
+
+    public HashMap<String,Double> getBag(int docID) {
+        HashMap<String,Double> map = new HashMap<String,Double>();
+        for (Map.Entry<String,Integer> me : bagsOfWords.get(docID).entrySet() ) {
+            map.put(me.getKey(),(double)me.getValue());
+        }
+        return map;
     }
 }
