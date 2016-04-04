@@ -73,12 +73,12 @@ public class Query {
 
             HashMap<String,Double> dSum = sumOfRelevantDocs( results, docIsRelevant, indexer );
             
-            System.out.println("Size of dSum: "+dSum.keySet().size());
+            // System.out.println("Size of dSum: "+dSum.keySet().size());
             dSum = join( dSum, q0 );
-            System.out.println("Size of dSum after joining with q: "+dSum.keySet().size());
+            // System.out.println("Size of dSum after joining with q: "+dSum.keySet().size());
 
             // normalize( dSum );
-            System.out.println("normalized dSum length of weights: " + lengthOfWeights(dSum));
+            // System.out.println("normalized dSum length of weights: " + lengthOfWeights(dSum));
 
             terms = new LinkedList<String>();
             weights = new LinkedList<Double>();
@@ -129,7 +129,7 @@ public class Query {
             i++;
             if (i==10) { break; }
         }
-        System.out.println("Dr: "+Dr);
+        // System.out.println("Dr: "+Dr);
         multiply( (beta/Dr), dSum );
         return dSum;
     }

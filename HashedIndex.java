@@ -125,7 +125,11 @@ public class HashedIndex implements Index {
 			pl = phraseQuery( query );    
 		} 
 		else if ( queryType == Index.RANKED_QUERY ) {
-            pl = rankedQuery( query );
+            // long t = System.nanoTime();
+            // for (int i=0;i<500;i++){
+                pl = rankedQuery( query );
+            // }
+            // System.out.println(((double)(System.nanoTime()-t))/500000000 );
             double p = getPageRankProportion(rankingType);
             // updateScores(pl,p);
             Collections.sort(pl.getList());
@@ -143,9 +147,26 @@ public class HashedIndex implements Index {
         return Math.log( (N+2) / (df+1) );
     }
 
+    private void pruneQuery(Query query) {
+        /* If all weights are lower than threshold then the search is empty */
 
+        LinkedList<String> terms = new LinkedList<String>();
+        LinkedList<Double> weights = new LinkedList<Double>();
+
+        for ( int i=0; i< query.terms.size(); i++ )  {
+            String term = query.terms.get(i);
+            double idf = idf( term );
+            if ( idf > 1 ) {
+                terms.add(term);
+                weights.add(query.weights.get(i));
+            }
+        }
+        query.terms = terms;
+        query.weights = weights;
+    }
 
     private PostingsList rankedQuery( Query query ) {
+        long t = System.nanoTime();
 
         PostingsList answerList = null;
         PostingsList currentList = null;
@@ -155,9 +176,11 @@ public class HashedIndex implements Index {
         int weightIdx = 0;
         double weightSum = 0;
         double norm = 0;
-
-        
-
+        System.out.println("Before pruning, size is: " + query.size());
+        if ( query.size() > 4 ) {
+            pruneQuery( query );
+        }
+        System.out.println("After pruning, size is: " + query.size());
 
         for (double d : query.weights) {
             norm += d*d;
@@ -178,7 +201,7 @@ public class HashedIndex implements Index {
             currentList = index.get( term );
 
             weightSum += termWeight*termWeight;
-            System.out.println(idf);
+            // System.out.println(term + " " +idf);
             for ( PostingsEntry pe : currentList.getList() ) {
                 tf = pe.getTF();
                 // System.out.println("tf: "+tf);
@@ -196,7 +219,7 @@ public class HashedIndex implements Index {
 
         }
         
-        System.out.println("sum of weights squared: "+weightSum);
+        // System.out.println("sum of weights squared: "+weightSum);
         answerList = new PostingsList();
 
 
@@ -209,7 +232,7 @@ public class HashedIndex implements Index {
                 tfidf = 0;
             } else {
                 // tfidf = scores.get(doc) / Math.sqrt(magnitude.get(doc));//lengths[doc];//Math.sqrt(lengths.get(doc));
-                tfidf = scores.get(doc) / lengths[doc];//Math.sqrt( lengths[doc] );//Math.sqrt(lengths.get(doc));
+                // tfidf = scores.get(doc) / lengths[doc];//Math.sqrt( lengths[doc] );//Math.sqrt(lengths.get(doc));
                 tfidf = scores.get(doc) / Math.sqrt( lengths[doc] );
                 // tfidf = scores.get(doc);
                 // tfidf = scores.get(doc) / Math.sqrt(docLengths.get(doc));
@@ -225,7 +248,9 @@ public class HashedIndex implements Index {
         }
         
         answerList.replaceList( tmpList );
-        System.out.println("answerList: "+answerList.getList().size());
+        // System.out.println("answerList: "+answerList.getList().size());
+        // System.out.println("Time taken in micro seconds: " + ((double)(System.nanoTime()-t))/1000 );
+        // System.out.println(((double)(System.nanoTime()-t))/1000000 );
         
         return answerList;
     }
