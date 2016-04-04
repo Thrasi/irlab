@@ -126,6 +126,7 @@ public class HashedIndex implements Index {
 		} 
 		else if ( queryType == Index.RANKED_QUERY ) {
             // long t = System.nanoTime();
+            // flag = true;
             // for (int i=0;i<500;i++){
                 pl = rankedQuery( query );
             // }
@@ -156,7 +157,7 @@ public class HashedIndex implements Index {
         for ( int i=0; i< query.terms.size(); i++ )  {
             String term = query.terms.get(i);
             double idf = idf( term );
-            if ( idf > 1 ) {
+            if ( idf > 2 ) {
                 terms.add(term);
                 weights.add(query.weights.get(i));
             }
@@ -164,6 +165,10 @@ public class HashedIndex implements Index {
         query.terms = terms;
         query.weights = weights;
     }
+    public void flagTrue() {
+        flag = true;
+    }
+    public boolean flag = true;
 
     private PostingsList rankedQuery( Query query ) {
         long t = System.nanoTime();
@@ -176,11 +181,16 @@ public class HashedIndex implements Index {
         int weightIdx = 0;
         double weightSum = 0;
         double norm = 0;
-        System.out.println("Before pruning, size is: " + query.size());
-        if ( query.size() > 4 ) {
+        // if (flag) {
+            System.out.println("Before pruning, size is: " + query.size());
+        // }
+        if ( query.size() > 8 ) {
             pruneQuery( query );
         }
-        System.out.println("After pruning, size is: " + query.size());
+        // if (flag) {
+            System.out.println("After pruning, size is: " + query.size());
+            // flag = false;
+        // }
 
         for (double d : query.weights) {
             norm += d*d;

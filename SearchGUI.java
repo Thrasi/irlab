@@ -225,6 +225,7 @@ public class SearchGUI extends JFrame {
 			// (this might corrupt the index).
 			synchronized ( indexLock ) {
 				// long t = System.nanoTime();
+					// indexer.index.flagTrue();
 				// for (int i=0;i<500;i++){
 					Query q = query.copy();
 			    	results = indexer.index.search( q, queryType, rankingType, structureType );

@@ -46,6 +46,7 @@ public interface Index {
     public void cleanup();
     public HashMap<String,Double> getBag(int docID);
     public double idf( String term );
+    public void flagTrue();
 
 }
 		    
